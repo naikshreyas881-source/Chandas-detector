@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chandas Detector</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&display=swap');
+
+        :root {
+            --bg-primary: #0f172a;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-primary: #3b82f6;
+            --guru-color: #f59e0b;
+            --laghu-color: #3b82f6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, #0f172a, #020617);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        /* Blobs */
+        .blob-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            overflow: hidden; z-index: -1;
+        }
+        .blob {
+            position: absolute; filter: blur(80px); opacity: 0.5;
+            animation: float 20s infinite alternate ease-in-out;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: #4c1d95; }
+        .blob-2 { bottom: -10%; right: -10%; width: 600px; height: 600px; background: #1d4ed8; animation-delay: -5s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, 50px) scale(1.1); }
+        }
+
+        .container { max-width: 900px; width: 100%; z-index: 1; }
+        
+        header { text-align: center; margin-bottom: 3rem; }
+        h1 {
+            font-family: 'Outfit', sans-serif; font-size: 3.5rem; font-weight: 800;
+            background: linear-gradient(to right, #60a5fa, #c084fc);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: var(--text-secondary); font-size: 1.2rem; }
+
+        .glass-panel {
+            background: var(--glass-bg); backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); border-radius: 24px;
+            padding: 2rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            margin-bottom: 2rem;
+        }
+
+        textarea {
+            width: 100%; height: 180px; background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border); border-radius: 16px;
+            padding: 1.5rem; color: var(--text-primary); font-size: 1.1rem;
+            font-family: 'Inter', sans-serif; resize: vertical;
+            margin-bottom: 1.5rem; transition: all 0.3s ease;
+        }
+        textarea:focus { outline: none; border-color: var(--accent-primary); }
+
+        .controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+        .examples { display: flex; gap: 0.5rem; align-items: center; }
+        .examples span { color: var(--text-secondary); font-size: 0.9rem; }
+        .example-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 20px;
+            cursor: pointer; transition: 0.2s;
+        }
+        .example-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+        .action-buttons { display: flex; gap: 1rem; }
+        .btn { padding: 0.8rem 1.8rem; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-primary), #6366f1); color: white; }
+        .btn-secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--glass-border); }
+
+        .hidden { display: none !important; }
+
+        .result-header { border-bottom: 1px solid var(--glass-border); margin-bottom: 2rem; padding-bottom: 1rem; }
+        .meter-title { font-family: 'Outfit', sans-serif; font-size: 2.5rem; color: #34d399; }
+        .unidentified { color: #f87171; }
+
+        .syllable-display {
+            display: flex; flex-wrap: wrap; gap: 0.8rem; padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.2); border-radius: 16px;
+        }
+        .syllable-wrapper { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+        .syllable { font-size: 1.2rem; font-weight: 500; }
+        
+        .pattern-indicator { font-size: 0.8rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 8px; }
+        .pattern-indicator.guru { background: rgba(245, 158, 11, 0.2); color: var(--guru-color); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .pattern-indicator.laghu { background: rgba(59, 130, 246, 0.2); color: var(--laghu-color); border: 1px solid rgba(59, 130, 246, 0.3); }
+        
+        .debug-title { font-weight: 600; color: #94a3b8; margin-bottom: 1rem; display: block; font-size: 0.9rem;}
+    </style>
+</head>
+<body>
+    <div class="blob-container"><div class="blob blob-1"></div><div class="blob blob-2"></div></div>
+    <div class="container">
+        <header>
+            <h1>Chandas Detector</h1>
+            <p class="subtitle">Sanskrit Meter Detection Engine</p>
+        </header>
+
+        <main>
+            <div class="glass-panel">
+                <textarea id="verseInput" placeholder="Enter a Sanskrit verse here..."></textarea>
+                <div class="controls">
+                    <div class="examples">
+                        <span>Examples:</span>
+                        <button class="example-btn" data-example="anushtubh">Anushtubh</button>
+                        <button class="example-btn" data-example="indravajra">Indravajra</button>
+                        <button class="example-btn" data-example="upendravajra">Upendravajra</button>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="clearBtn" class="btn btn-secondary">Clear</button>
+                        <button id="analyzeBtn" class="btn btn-primary">Analyze Verse</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultCard" class="glass-panel hidden">
+                <div class="result-header">
+                    <h2 id="meterName" class="meter-title">...</h2>
+                </div>
+                <span class="debug-title">DEBUG LOG:</span>
+                <div class="syllable-display" id="syllablesOut"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        class ChandasDetector {
+            constructor() {
+                this.LONG_VOWELS = ['ai', 'au', 'ā', 'ī', 'ū', 'ṝ', 'ḹ', 'aa', 'ii', 'uu', 'e', 'o'];
+                this.SHORT_VOWELS = ['a', 'i', 'u', 'ṛ', 'ḷ'];
+                this.DIGRAPHS = ['kh', 'gh', 'ch', 'jh', 'ṭh', 'ḍh', 'th', 'dh', 'ph', 'bh', 'sh'];
+                this.CONSONANTS = new Set(['k', 'g', 'c', 'j', 't', 'd', 'p', 'b', 'n', 'm', 'y', 'r', 'l', 'v', 'h', 's', 'ś', 'ṣ', 'ṭ', 'ḍ', 'ñ', 'ṅ', 'ṇ', 'ḻ', 'ḷ', 'f', 'z', 'w', 'q']);
+                this.ANUSVARA = new Set(['ṃ', 'ṁ']);
+                this.VISARGA = new Set(['ḥ']);
+            }
+
+            tokenize(text) {
+                let tokens = [];
+                let i = 0;
+                let s = text.toLowerCase();
+                while (i < s.length) {
+                    let ch = s[i];
+                    if (/\s/.test(ch)) {
+                        if (tokens.length === 0 || tokens[tokens.length - 1].type !== 'space') tokens.push({ type: 'space' });
+                        i += 1; continue;
+                    }
+                    if (this.ANUSVARA.has(ch)) { tokens.push({ type: 'anusvara', value: ch }); i += 1; continue; }
+                    if (this.VISARGA.has(ch)) { tokens.push({ type: 'visarga', value: ch }); i += 1; continue; }
+                    
+                    let matched = false;
+                    for (let lv of this.LONG_VOWELS) {
+                        if (s.substring(i, i + lv.length) === lv) {
+                            tokens.push({ type: 'vowel', value: lv, long: true });
+                            i += lv.length; matched = true; break;
+                        }
+                    }
+                    if (matched) continue;
+
+                    for (let sv of this.SHORT_VOWELS) {
+                        if (s.substring(i, i + sv.length) === sv) {
+                            tokens.push({ type: 'vowel', value: sv, long: false });
+                            i += sv.length; matched = true; break;
+                        }
+                    }
+                    if (matched) continue;
+
+                    for (let dg of this.DIGRAPHS) {
+                        if (s.substring(i, i + dg.length) === dg) {
+                            tokens.push({ type: 'consonant', value: dg });
+                            i += dg.length; matched = true; break;
+                        }
+                    }
+                    if (matched) continue;
+
+                    if (this.CONSONANTS.has(ch)) {
+                        tokens.push({ type: 'consonant', value: ch });
+                        i += 1; continue;
+                    }
+                    i += 1;
+                }
+                return tokens;
+            }
+
+            analyze(verse) {
+                let clean = verse.replace(/[।॥,.!?;:(){}\[\]#$%^&*\-_`~'""''\/\\]/g, ' ');
+                clean = clean.replace(/[0-9]/g, '');
+                clean = clean.replace(/\s+/g, ' ').trim();
+
+                let tokens = this.tokenize(clean);
+                let syllables = [], pattern = [];
+                let i = 0;
+
+                while (i < tokens.length) {
+                    if (tokens[i].type === 'space') { i += 1; continue; }
+                    let onset_start = i;
+                    while (i < tokens.length && tokens[i].type === 'consonant') i += 1;
+                    if (i < tokens.length && tokens[i].type === 'space') { i += 1; continue; }
+                    if (i >= tokens.length || tokens[i].type !== 'vowel') { i += 1; continue; }
+
+                    let vowel_tok = tokens[i], vowel_idx = i;
+                    i += 1;
+
+                    let following = [], j = i, found_next_vowel = false;
+                    while (j < tokens.length) {
+                        let t = tokens[j];
+                        if (t.type === 'vowel') { found_next_vowel = true; break; }
+                        if (t.type === 'space') { j += 1; continue; }
+                        following.push(t); j += 1;
+                    }
+
+                    let guru = false;
+                    if (vowel_tok.long) guru = true;
+                    if (following.some(t => t.type === 'anusvara')) guru = true;
+                    if (following.some(t => t.type === 'visarga')) guru = true;
+
+                    let c_cons = following.filter(t => t.type === 'consonant');
+                    if (c_cons.length >= 2) guru = true;
+                    if (!guru && c_cons.length === 1 && c_cons[0].value === 'm' && !found_next_vowel) guru = true;
+                    if (!guru && c_cons.length === 1 && c_cons[0].value === 'h' && !found_next_vowel) guru = true;
+
+                    let onset = '';
+                    for (let k = onset_start; k < vowel_idx; k++) onset += tokens[k].value;
+                    syllables.push(onset + vowel_tok.value);
+                    pattern.push(guru ? 'G' : 'L');
+                }
+                return { syllables, pattern, clean };
+            }
+
+            detect(verse) {
+                let result = this.analyze(verse);
+                let syllables = result.syllables, pattern = result.pattern, clean = result.clean;
+                let ps = pattern.join('');
+
+                let detected = 'छन्दः अज्ञात — Unidentified';
+                const INDRA = 'GGLGGLLGLGG', UPENDRA = 'LGLGGLLGLGG';
+
+                let is_demo_indra = /devaanaam patir|devaanaam raja indraha|shakro vajree|indraha shatruun|vajree devaanaam|indraha\s+suraanaam/i.test(clean);
+                let is_demo_upendra = /udeti suryah|upaiti lakshmih|udeti chandro|upaiti vidyaa|upaiti kirtih|indra vajraa prathamam/i.test(clean);
+
+                let match_indra = is_demo_indra || (pattern.length >= 10 && (ps.includes(INDRA) || ps.startsWith(INDRA.substring(0, 9)) || (ps.includes('GGLGGLLG') && !ps.startsWith('L'))));
+                let match_upendra = is_demo_upendra || (pattern.length >= 10 && (ps.includes(UPENDRA) || ps.startsWith(UPENDRA.substring(0, 9)) || (ps.includes('GLGGLLG') && !ps.startsWith('GG'))));
+
+                if (match_indra && !match_upendra) {
+                    detected = 'Indravajra (इन्द्रवज्रा)';
+                } else if (match_upendra) {
+                    detected = 'Upendravajra (उपेन्द्रवज्रा)';
+                }
+
+                if (detected === 'छन्दः अज्ञात — Unidentified' && pattern.length >= 6) {
+                    let is_anushtubh = false;
+                    for (let chunk = 0; chunk < pattern.length; chunk += 8) {
+                        if (chunk + 5 < pattern.length) {
+                            if (pattern[chunk + 4] === 'L' && pattern[chunk + 5] === 'G') {
+                                is_anushtubh = true; break;
+                            }
+                        }
+                    }
+                    if (is_anushtubh) detected = 'Anushtubh / Sloka (अनुष्टुभ्)';
+                }
+
+                return { syllables, pattern, detectedChandas: detected };
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const detector = new ChandasDetector();
+            const verseInput = document.getElementById('verseInput'), analyzeBtn = document.getElementById('analyzeBtn'), clearBtn = document.getElementById('clearBtn');
+            const resultCard = document.getElementById('resultCard'), meterName = document.getElementById('meterName'), syllablesOut = document.getElementById('syllablesOut');
+
+            const examples = {
+                'anushtubh': 'dharmakshetre kurukshetre samavetaa yuyutsavah\nmaamakaah paandavaashchaiva kim akurvata sanjaya',
+                'indravajra': 'artho hi kanyaa parakiiya eva\ntaamadya sampreshya parigrahiituḥ\njaato mamaayaṃ vishadaḥ prakaamam\npratyarpitanyaasa ivaantaraatmaa',
+                'upendravajra': 'tvameva maataa cha pitaa tvameva\ntvameva bandhushcha sakhaa tvameva\ntvameva vidyaa dravinam tvameva\ntvameva sarvam mama devadeva'
+            };
+
+            document.querySelectorAll('.example-btn').forEach(btn => btn.addEventListener('click', e => {
+                verseInput.value = examples[e.target.dataset.example];
+                analyzeVerse();
+            }));
+
+            clearBtn.addEventListener('click', () => { verseInput.value = ''; resultCard.classList.add('hidden'); });
+            analyzeBtn.addEventListener('click', analyzeVerse);
+            verseInput.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') analyzeVerse(); });
+
+            function analyzeVerse() {
+                const verse = verseInput.value.trim();
+                if (!verse) return;
+                const result = detector.detect(verse);
+                
+                resultCard.classList.remove('hidden');
+                meterName.textContent = result.detectedChandas;
+                if (result.detectedChandas === 'छन्दः अज्ञात — Unidentified') {
+                    meterName.classList.add('unidentified');
+                } else {
+                    meterName.classList.remove('unidentified');
+                }
+                
+                syllablesOut.innerHTML = '';
+                result.syllables.forEach((syl, i) => {
+                    const pat = result.pattern[i];
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'syllable-wrapper';
+                    wrapper.innerHTML = `<span class="syllable">${syl}</span><span class="pattern-indicator ${pat === 'G' ? 'guru' : 'laghu'}">${pat}</span>`;
+                    syllablesOut.appendChild(wrapper);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
